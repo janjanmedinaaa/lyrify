@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="viewModel"
+            type="com.medina.juanantonio.lyrify.features.home.HomeViewModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true"
+        android:background="@color/black">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/image_view_spotify_logo"
+            android:layout_width="@dimen/dp_0"
+            android:layout_height="@dimen/dp_0"
+            android:padding="@dimen/dp_120"
+            android:src="@drawable/spotify_logo"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.GONE : View.VISIBLE}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/image_view_album"
+            android:layout_width="@dimen/dp_80"
+            android:layout_height="@dimen/dp_80"
+            android:layout_margin="@dimen/default_margin"
+            android:background="@color/white"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:src="@tools:sample/avatars" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/text_view_song_name"
+            android:layout_width="@dimen/dp_0"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/default_margin"
+            android:ellipsize="end"
+            android:fontFamily="@font/open_sans_bold"
+            android:singleLine="true"
+            android:text="@{viewModel.currentTrack.songName}"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_22"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toTopOf="@id/text_view_artist"
+            app:layout_constraintEnd_toStartOf="@id/spin_kit_spotify_loading"
+            app:layout_constraintStart_toEndOf="@id/image_view_album"
+            app:layout_constraintTop_toTopOf="@id/image_view_album"
+            app:layout_constraintVertical_chainStyle="packed"
+            tools:text="@tools:sample/lorem[2]" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/text_view_artist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/open_sans"
+            android:text="@{viewModel.currentTrack.artist}"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_20"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="@id/image_view_album"
+            app:layout_constraintStart_toStartOf="@id/text_view_song_name"
+            app:layout_constraintTop_toBottomOf="@id/text_view_song_name"
+            tools:text="@tools:sample/lorem[2]" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view_lyrics"
+            android:layout_width="@dimen/dp_0"
+            android:layout_height="@dimen/dp_0"
+            android:clickable="false"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:overScrollMode="never"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
+            app:layoutManager=".common.utils.StackLayoutManager"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:listitem="@layout/item_lyrics" />
+
+        <com.github.ybq.android.spinkit.SpinKitView
+            android:id="@+id/spin_kit_spotify_loading"
+            style="@style/SpinKitView.Large.ThreeBounce"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginEnd="@dimen/dp_16"
+            android:visibility="@{safeUnbox(viewModel.spotifyLoading) ? View.VISIBLE : View.GONE}"
+            app:SpinKit_Color="@android:color/white"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.medina.juanantonio.lyrify.common.views.PlayerTouchView
+            android:id="@+id/player_touch_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="@dimen/dp_40"
+            android:clickable="true"
+            android:focusable="true" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

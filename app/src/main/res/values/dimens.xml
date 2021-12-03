@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <dimen name="dp_0">0dp</dimen>
+    <dimen name="dp_1">1dp</dimen>
+    <dimen name="dp_2">2dp</dimen>
+    <dimen name="dp_4">4dp</dimen>
+    <dimen name="dp_6">6dp</dimen>
+    <dimen name="dp_8">8dp</dimen>
+    <dimen name="dp_16">16dp</dimen>
+    <dimen name="dp_32">32dp</dimen>
+    <dimen name="dp_40">40dp</dimen>
+    <dimen name="dp_56">56dp</dimen>
+    <dimen name="dp_80">80dp</dimen>
+    <dimen name="dp_120">120dp</dimen>
+
+    <dimen name="sp_12">12sp</dimen>
+    <dimen name="sp_16">16sp</dimen>
+    <dimen name="sp_18">18sp</dimen>
+    <dimen name="sp_20">20sp</dimen>
+    <dimen name="sp_22">22sp</dimen>
+    <dimen name="sp_24">24sp</dimen>
+    <dimen name="sp_36">36sp</dimen>
+    <dimen name="sp_42">42sp</dimen>
+
+    <dimen name="default_margin">@dimen/dp_16</dimen>
+    <dimen name="default_padding">@dimen/dp_16</dimen>
+
+    <dimen name="default_item_list_display_padding">@dimen/dp_2</dimen>
+</resources>
