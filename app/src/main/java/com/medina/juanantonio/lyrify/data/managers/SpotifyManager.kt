@@ -1,6 +1,5 @@
 package com.medina.juanantonio.lyrify.data.managers
 
-import android.util.Log
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
 import com.github.kittinunf.fuel.httpPut
@@ -98,7 +97,6 @@ class SpotifyManager : ISpotifyManager {
         request.responseString { _, response, resultData ->
             when (resultData) {
                 is Result.Success -> {
-                    Log.d("DEVELOP", resultData.value)
                     if (resultData.value.isNotEmpty()) {
                         val currentTrack = resultData.value.toSpotifyCurrentTrack()
                         result.complete(Pair(response.statusCode, currentTrack))
