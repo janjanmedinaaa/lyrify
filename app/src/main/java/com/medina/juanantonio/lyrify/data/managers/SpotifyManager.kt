@@ -1,33 +1,23 @@
 package com.medina.juanantonio.lyrify.data.managers
 
-import android.app.Activity
-import android.content.Context
 import android.util.Log
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
 import com.github.kittinunf.fuel.httpPut
 import com.github.kittinunf.result.Result
-import com.medina.juanantonio.lyrify.R
-import com.medina.juanantonio.lyrify.common.extensions.toBase64
-import com.medina.juanantonio.lyrify.common.extensions.toSpotifyAccessToken
-import com.medina.juanantonio.lyrify.common.extensions.toSpotifyCurrentTrack
-import com.medina.juanantonio.lyrify.data.models.SpotifyAccessToken
-import com.medina.juanantonio.lyrify.data.models.SpotifyCurrentTrack
-import com.spotify.sdk.android.auth.AuthorizationClient
-import com.spotify.sdk.android.auth.AuthorizationRequest
-import com.spotify.sdk.android.auth.AuthorizationResponse
+import com.medina.juanantonio.lyrify.BuildConfig
+import com.medina.juanantonio.lyrify.common.extensions.*
+import com.medina.juanantonio.lyrify.data.models.*
 import kotlinx.coroutines.CompletableDeferred
-import kotlin.random.Random
 
-class SpotifyManager(
-    context: Context
-) : ISpotifyManager {
+class SpotifyManager : ISpotifyManager {
 
-    private val clientId = context.getString(R.string.spotifyClientId)
-    private val clientSecret = context.getString(R.string.spotifyClientSecret)
+    override val clientId
+        get() = BuildConfig.SPOTIFY_CLIENT_ID
+    private val clientSecret
+        get() = BuildConfig.SPOTIFY_CLIENT_SECRET
 
     companion object {
-        const val REQUEST_CODE = 1337
         const val REDIRECT_URL = "com.medina.juanantonio.lyrify://callback"
 
         private const val CURRENT_PLAYING_TRACK_URL =
@@ -35,6 +25,8 @@ class SpotifyManager(
         private const val REQUEST_ACCESS_TOKEN_URL =
             "https://accounts.spotify.com/api/token"
 
+        private const val SEEK_TO_POSITION_URL =
+            "https://api.spotify.com/v1/me/player/seek"
         private const val SKIP_TO_PREVIOUS_URL =
             "https://api.spotify.com/v1/me/player/previous"
         private const val SKIP_TO_NEXT_URL =
@@ -44,30 +36,8 @@ class SpotifyManager(
         private const val PLAY_URL =
             "https://api.spotify.com/v1/me/player/play"
 
-        const val TAG = "SpotifyManager"
-    }
-
-    override fun authenticate(activity: Activity, externalBrowser: Boolean): String {
-        return try {
-            val state = Random.nextInt(100000, 999999).toString()
-            val builder = AuthorizationRequest.Builder(
-                clientId,
-                AuthorizationResponse.Type.CODE,
-                REDIRECT_URL
-            ).setScopes(arrayOf("user-read-playback-state", "user-modify-playback-state"))
-                .setState(state)
-            val request = builder.build()
-
-            if (externalBrowser)
-                AuthorizationClient.openLoginInBrowser(activity, request)
-            else
-                AuthorizationClient.openLoginActivity(activity, REQUEST_CODE, request)
-
-            state
-        } catch (e: Exception) {
-            Log.d(TAG, "${e.message}")
-            ""
-        }
+        private const val LYRICS_URL =
+            "https://spotify-lyric-api.herokuapp.com"
     }
 
     override suspend fun requestAccessToken(code: String): SpotifyAccessToken? {
@@ -128,6 +98,7 @@ class SpotifyManager(
         request.responseString { _, response, resultData ->
             when (resultData) {
                 is Result.Success -> {
+                    Log.d("DEVELOP", resultData.value)
                     if (resultData.value.isNotEmpty()) {
                         val currentTrack = resultData.value.toSpotifyCurrentTrack()
                         result.complete(Pair(response.statusCode, currentTrack))
@@ -139,6 +110,18 @@ class SpotifyManager(
                     result.complete(Pair(response.statusCode, null))
                 }
             }
+        }.join()
+        return result.await()
+    }
+
+    override suspend fun seekToPosition(token: String, positionMs: Int): Boolean {
+        val result = CompletableDeferred<Boolean>()
+        // httpPut(parameters) is not working. Added position_ms manually
+        val request = "$SEEK_TO_POSITION_URL?position_ms=$positionMs".httpPut()
+        request.header(mapOf("Authorization" to "Bearer $token"))
+
+        request.responseString { _, _, resultData ->
+            result.complete(resultData is Result.Success)
         }.join()
         return result.await()
     }
@@ -186,16 +169,43 @@ class SpotifyManager(
         }.join()
         return result.await()
     }
+
+    override suspend fun getTrackLyrics(trackId: String): OpenSpotifyLyrics? {
+        val result = CompletableDeferred<OpenSpotifyLyrics?>()
+        val request = LYRICS_URL.httpGet(
+            parameters = listOf(
+                Pair("trackid", trackId)
+            )
+        )
+
+        request.responseString { _, _, resultData ->
+            when (resultData) {
+                is Result.Success -> {
+                    val openLyrics = resultData.value.toOpenSpotifyLyrics()
+                    result.complete(openLyrics)
+                }
+                else -> {
+                    result.complete(null)
+                }
+            }
+        }.join()
+        return result.await()
+    }
 }
 
 interface ISpotifyManager {
-    fun authenticate(activity: Activity, externalBrowser: Boolean = true): String
+
+    val clientId: String
+
     suspend fun requestAccessToken(code: String): SpotifyAccessToken?
     suspend fun refreshAccessToken(refreshToken: String): SpotifyAccessToken?
     suspend fun getUserCurrentTrack(token: String): Pair<Int, SpotifyCurrentTrack?>
 
+    suspend fun seekToPosition(token: String, positionMs: Int): Boolean
     suspend fun skipToNext(token: String): Boolean
     suspend fun skipToPrevious(token: String): Boolean
     suspend fun pause(token: String): Boolean
     suspend fun play(token: String): Boolean
+
+    suspend fun getTrackLyrics(trackId: String): OpenSpotifyLyrics?
 }

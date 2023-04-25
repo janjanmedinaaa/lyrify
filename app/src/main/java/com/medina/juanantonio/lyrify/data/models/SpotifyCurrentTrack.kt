@@ -2,10 +2,12 @@ package com.medina.juanantonio.lyrify.data.models
 
 data class SpotifyCurrentTrack(
     val item: Item?,
-    val is_playing: Boolean
+    val is_playing: Boolean,
+    val progress_ms: Int?
 ) {
 
     data class Item(
+        val id: String,
         val name: String,
         val album: Album,
         val artists: List<Artist>,
@@ -28,6 +30,9 @@ data class SpotifyCurrentTrack(
         }
     }
 
+    val trackId: String
+        get() = item?.id ?: ""
+
     val songName: String
         get() = item?.name ?: ""
 
@@ -41,4 +46,10 @@ data class SpotifyCurrentTrack(
 
     val albumName: String
         get() = item?.album?.name ?: ""
+
+    val playProgress: Int
+        get() = progress_ms ?: 0
+
+    val isMusicPlaying: Boolean
+        get() = item != null && is_playing
 }

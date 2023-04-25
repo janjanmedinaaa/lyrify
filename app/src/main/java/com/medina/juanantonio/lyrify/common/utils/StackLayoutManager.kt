@@ -6,6 +6,7 @@ import android.animation.TimeInterpolator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.res.Resources
+import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
 import android.util.AttributeSet
@@ -461,7 +462,6 @@ class StackLayoutManager(
         }
 
         fun transform(x: Float, view: View, stackLayoutManager: StackLayoutManager) {
-            if (Build.VERSION.SDK_INT < 21) return
             ViewCompat.setTranslationZ(
                 view, mapRange(
                     max(
@@ -475,6 +475,29 @@ class StackLayoutManager(
                     maxTranslationZ
                 )
             )
+        }
+    }
+
+    /**
+     * This transformer scales the view during entry and exit
+     *
+     * Preview: https://raw.githubusercontent.com/DarkionAvey/StackLayoutManager/master/Showcase/gifs/scale_in_out.webp
+     */
+    object ScaleTransformer {
+        private val scalePath =
+            FreePathInterpolator(
+                Path().apply {
+                    //0.7f is the minimum scale
+                    moveTo(0f, 0.7f)
+                    lineTo(1f, 1f)
+                })
+
+        fun transform(x: Float, v: View, stackLayoutManager: StackLayoutManager) {
+            ElevationTransformer.transform(x, v, stackLayoutManager)
+            val scale = if (x == 0f) 1f else scalePath.getInterpolation(1f - kotlin.math.abs(x))
+            v.scaleX = scale
+            v.scaleY = scale
+            v.alpha = scale
         }
     }
 

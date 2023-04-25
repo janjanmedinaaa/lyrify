@@ -1,11 +1,7 @@
 <resources>
     <string name="app_name">Lyrify</string>
 
-    <string name="lyrify_spotify_channel_name">Lyrify Spotify Listener</string>
-    <string name="lyrify_spotify_channel_description">Queries Spotify Data</string>
-    <string name="lyrify_spotify_notification_content_title">Getting Spotify Data</string>
-    <string name="lyrify_spotify_notification_content_text">Lyrify Spotify Listener is currently running in the background.</string>
-
-    <string name="looking_up_lyrics">Looking Up Lyrics…</string>
     <string name="lyrics_not_available">No Lyrics Available.</string>
+    <string name="synced">SYNCED</string>
+    <string name="unsynced">UNSYNCED</string>
 </resources>

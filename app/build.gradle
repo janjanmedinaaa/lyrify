@@ -12,25 +12,42 @@ def keysPropertiesFile = rootProject.file("keys.properties")
 def keysProperties = new Properties()
 keysProperties.load(new FileInputStream(keysPropertiesFile))
 
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
 android {
-    compileSdk 30
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.medina.juanantonio.lyrify"
         minSdk 24
-        targetSdk 30
+        targetSdk 33
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -46,8 +63,8 @@ android {
     }
 
     applicationVariants.all { variant ->
-        variant.resValue "string", "spotifyClientId", keysProperties['spotifyClientId']
-        variant.resValue "string", "spotifyClientSecret", keysProperties['spotifyClientSecret']
+        buildConfigField "String", "SPOTIFY_CLIENT_ID", "\"${keysProperties['spotifyClientId']}\""
+        buildConfigField  "String", "SPOTIFY_CLIENT_SECRET", "\"${keysProperties['spotifyClientSecret']}\""
     }
 }
 

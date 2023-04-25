@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.LinearInterpolator
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -18,16 +19,11 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
 import coil.load
 import com.medina.juanantonio.lyrify.R
-import com.medina.juanantonio.lyrify.common.Constants.PreferencesKey.SPOTIFY_ACCESS_TOKEN
-import com.medina.juanantonio.lyrify.common.Constants.PreferencesKey.SPOTIFY_CODE
-import com.medina.juanantonio.lyrify.common.Constants.PreferencesKey.SPOTIFY_REFRESH_TOKEN
 import com.medina.juanantonio.lyrify.common.utils.StackLayoutManager
 import com.medina.juanantonio.lyrify.common.utils.autoCleared
 import com.medina.juanantonio.lyrify.common.utils.observeEvent
-import com.medina.juanantonio.lyrify.common.utils.toEvent
-import com.medina.juanantonio.lyrify.common.views.PlayerTouchView
+import com.medina.juanantonio.lyrify.data.adapters.Lyric
 import com.medina.juanantonio.lyrify.data.adapters.LyricsAdapter
-import com.medina.juanantonio.lyrify.data.managers.IDataStoreManager
 import com.medina.juanantonio.lyrify.data.models.SpotifyCurrentTrack
 import com.medina.juanantonio.lyrify.databinding.FragmentHomeBinding
 import com.medina.juanantonio.lyrify.features.MainViewModel
@@ -36,7 +32,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
-import javax.inject.Inject
 import kotlin.concurrent.schedule
 import kotlin.math.absoluteValue
 
@@ -48,7 +43,10 @@ class HomeFragment : Fragment() {
     private val mainViewModel: MainViewModel by activityViewModels()
 
     private val stackLayoutManager = StackLayoutManager(
-        horizontalLayout = false
+        horizontalLayout = false,
+        layoutInterpolator = LinearInterpolator(),
+        maxViews = 4,
+        viewTransformer = StackLayoutManager.ScaleTransformer::transform
     )
     private lateinit var lyricsAdapter: LyricsAdapter
     private lateinit var audioManager: AudioManager
@@ -57,9 +55,6 @@ class HomeFragment : Fragment() {
         get() = Resources.getSystem().displayMetrics.heightPixels
 
     private var startingVolume = 0
-
-    @Inject
-    lateinit var dataStoreManager: IDataStoreManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -114,29 +109,14 @@ class HomeFragment : Fragment() {
         }
 
         binding.playerTouchView.setOnPlayerClicked {
-            when (viewModel.spotifyPlaying.value) {
-                true -> {
-                    when (it) {
-                        PlayerTouchView.PlayerAction.SKIP_PREVIOUS ->
-                            viewModel.skipToPrevious()
-                        PlayerTouchView.PlayerAction.SKIP_NEXT ->
-                            viewModel.skipToNext()
-                        PlayerTouchView.PlayerAction.PLAY_PAUSE -> {
-                            if (viewModel.currentTrack.value?.is_playing == true) {
-                                viewModel.pause()
-                            } else {
-                                viewModel.play()
-                            }
-                        }
-                    }
-                }
-                false -> {
-                    viewModel.requestUserCurrentTrack(
-                        activity = requireActivity(),
-                        authenticate = true
-                    ) { currentTrack ->
-                        updateSpotifyLyrics(currentTrack)
-                    }
+            if (viewModel.spotifyPlaying.value == true) {
+                viewModel.updateControl(it)
+            } else {
+                viewModel.requestUserCurrentTrack(
+                    activity = requireActivity(),
+                    authenticate = true
+                ) { currentTrack ->
+                    updateSpotifyLyrics(currentTrack)
                 }
             }
         }
@@ -162,51 +142,44 @@ class HomeFragment : Fragment() {
 
     private fun listenToVM() {
         viewModel.songLyrics.observe(viewLifecycleOwner) { lyrics ->
-            if (lyrics.isEmpty()) lyricsAdapter.setLyrics(
-                arrayListOf(getString(R.string.lyrics_not_available))
-            ) else lyricsAdapter.setLyrics(lyrics)
+            if (lyrics.isEmpty()) {
+                lyricsAdapter.setLyrics(
+                    arrayListOf(
+                        Lyric(
+                            line = getString(R.string.lyrics_not_available),
+                            startTimeMs = 0
+                        )
+                    )
+                )
+            } else lyricsAdapter.setLyrics(lyrics)
 
-            stackLayoutManager.scrollToPosition(0f, duration = 500)
+            stackLayoutManager.scrollToPosition(0f, animated = false)
         }
 
         viewModel.currentTrack.observe(viewLifecycleOwner) {
             binding.imageViewAlbum.load(it.albumImageUrl)
+
+            if (viewModel.isLyricsInSync.value == false) return@observe
+            val nearestPreviousLine = lyricsAdapter.getNearestLineFromStartTime(it.playProgress)
+            stackLayoutManager.scrollToPosition(nearestPreviousLine)
         }
 
-        viewModel.spotifyCode.observeEvent(viewLifecycleOwner) { code ->
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
-                dataStoreManager.putString(SPOTIFY_CODE, code)
-                viewModel.requestAccessToken(code)
-            }
-        }
-
-        viewModel.spotifyAccessToken.observeEvent(viewLifecycleOwner) { accessToken ->
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
-                dataStoreManager.putString(SPOTIFY_ACCESS_TOKEN, accessToken)
-            }
-
-            if (viewModel.isSpotifyRequestPending) {
-                Timer().schedule(500) {
-                    viewModel.requestUserCurrentTrack(
-                        activity = requireActivity(),
-                        authenticate = false
-                    ) {
-                        updateSpotifyLyrics(it)
-                    }
-                    viewModel.isSpotifyRequestPending = false
+        viewModel.requestUserCurrentTrack.observeEvent(viewLifecycleOwner) {
+            Timer().schedule(500) {
+                viewModel.requestUserCurrentTrack(
+                    activity = requireActivity(),
+                    authenticate = false
+                ) {
+                    updateSpotifyLyrics(it)
                 }
-            }
-        }
-
-        viewModel.spotifyRefreshToken.observeEvent(viewLifecycleOwner) { refreshToken ->
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
-                dataStoreManager.putString(SPOTIFY_REFRESH_TOKEN, refreshToken)
+                viewModel.isSpotifyRequestPending = false
             }
         }
     }
 
     private fun listenToActivityVM() {
         mainViewModel.dispatchKeyEvent.observe(viewLifecycleOwner) {
+            if (viewModel.isLyricsInSync.value == true) return@observe
             when (it.keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
                     val previousItem = stackLayoutManager.currentItem - 1
@@ -227,10 +200,10 @@ class HomeFragment : Fragment() {
         mainViewModel.authorizationResponse.observe(viewLifecycleOwner) {
             when (it.type) {
                 AuthorizationResponse.Type.TOKEN -> {
-                    viewModel.spotifyAccessToken.value = it.accessToken?.toEvent()
+                    viewModel.saveAccessTokenFromAuthentication(it.accessToken)
                 }
                 AuthorizationResponse.Type.CODE -> {
-                    viewModel.spotifyCode.value = it.code?.toEvent()
+                    viewModel.requestAccessToken(it.code)
                 }
                 else -> Unit
             }
@@ -241,14 +214,15 @@ class HomeFragment : Fragment() {
         currentTrack: SpotifyCurrentTrack?
     ) {
         viewModel.viewModelScope.launch(Dispatchers.Main) {
-            if (currentTrack == null)
+            if (currentTrack == null) {
                 viewModel.songLyrics.value = arrayListOf()
-            else {
+                viewModel.currentSongTitle = ""
+            } else {
                 viewModel.getSongLyrics(currentTrack)
                 viewModel.currentTrack.value = currentTrack
             }
 
-            viewModel.spotifyPlaying.value = currentTrack != null
+            viewModel.spotifyPlaying.value = currentTrack?.item != null
         }
     }
 }

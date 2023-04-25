@@ -28,26 +28,70 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="gone" />
 
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/image_view_album"
+        <androidx.cardview.widget.CardView
+            android:id="@+id/card_view_album"
             android:layout_width="@dimen/dp_80"
             android:layout_height="@dimen/dp_80"
             android:layout_margin="@dimen/default_margin"
-            android:background="@color/white"
             android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
+            app:cardCornerRadius="@dimen/dp_8"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:src="@tools:sample/avatars" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/image_view_album"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                tools:src="@tools:sample/avatars" />
+        </androidx.cardview.widget.CardView>
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/text_view_synced"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/dp_8"
+            android:background="@drawable/synced_unsynced_background"
+            android:backgroundTint="@color/synced_green"
+            android:fontFamily="@font/open_sans_bold"
+            android:paddingHorizontal="@dimen/dp_8"
+            android:paddingVertical="@dimen/dp_4"
+            android:text="@string/synced"
+            android:textAlignment="center"
+            android:textColor="@color/white"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying &amp;&amp; viewModel.hasLyrics &amp;&amp; viewModel.isLyricsInSync) ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="@id/text_view_song_name"
+            app:layout_constraintStart_toEndOf="@id/text_view_song_name"
+            app:layout_constraintTop_toTopOf="@id/text_view_song_name" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/text_view_unsynced"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/dp_8"
+            android:background="@drawable/synced_unsynced_background"
+            android:backgroundTint="@color/unsynced_red"
+            android:fontFamily="@font/open_sans_bold"
+            android:paddingHorizontal="@dimen/dp_8"
+            android:paddingVertical="@dimen/dp_4"
+            android:text="@string/unsynced"
+            android:textAlignment="center"
+            android:textColor="@color/white"
+            android:visibility="@{safeUnbox(viewModel.spotifyPlaying &amp;&amp; viewModel.hasLyrics &amp;&amp; !viewModel.isLyricsInSync) ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="@id/text_view_song_name"
+            app:layout_constraintStart_toEndOf="@id/text_view_song_name"
+            app:layout_constraintTop_toTopOf="@id/text_view_song_name" />
 
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/text_view_song_name"
-            android:layout_width="@dimen/dp_0"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="@dimen/default_margin"
             android:ellipsize="end"
             android:fontFamily="@font/open_sans_bold"
+            android:maxWidth="@dimen/song_name_max_width"
             android:singleLine="true"
             android:text="@{viewModel.currentTrack.songName}"
             android:textColor="@color/white"
@@ -55,10 +99,12 @@
             android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toTopOf="@id/text_view_artist"
             app:layout_constraintEnd_toStartOf="@id/spin_kit_spotify_loading"
-            app:layout_constraintStart_toEndOf="@id/image_view_album"
-            app:layout_constraintTop_toTopOf="@id/image_view_album"
+            app:layout_constraintHorizontal_bias="0"
+            app:layout_constraintStart_toEndOf="@id/card_view_album"
+            app:layout_constraintTop_toTopOf="@id/card_view_album"
             app:layout_constraintVertical_chainStyle="packed"
-            tools:text="@tools:sample/lorem[2]" />
+            app:layout_constraintWidth_percent=".5"
+            tools:text="@tools:sample/lorem[6]" />
 
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/text_view_artist"
@@ -69,7 +115,7 @@
             android:textColor="@color/white"
             android:textSize="@dimen/sp_20"
             android:visibility="@{safeUnbox(viewModel.spotifyPlaying) ? View.VISIBLE : View.GONE}"
-            app:layout_constraintBottom_toBottomOf="@id/image_view_album"
+            app:layout_constraintBottom_toBottomOf="@id/card_view_album"
             app:layout_constraintStart_toStartOf="@id/text_view_song_name"
             app:layout_constraintTop_toBottomOf="@id/text_view_song_name"
             tools:text="@tools:sample/lorem[2]" />
@@ -88,6 +134,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintWidth_percent=".7"
             tools:listitem="@layout/item_lyrics" />
 
         <com.github.ybq.android.spinkit.SpinKitView
@@ -106,7 +153,6 @@
             android:id="@+id/player_touch_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginHorizontal="@dimen/dp_40"
             android:clickable="true"
             android:focusable="true" />
     </androidx.constraintlayout.widget.ConstraintLayout>

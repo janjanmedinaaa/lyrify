@@ -4,10 +4,25 @@ import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.medina.juanantonio.lyrify.data.models.OpenSpotifyLyrics
 import com.medina.juanantonio.lyrify.databinding.ItemLyricsBinding
 
 class LyricsAdapter : RecyclerView.Adapter<LyricsAdapter.LyricsItemViewHolder>() {
-    private val lyricsList = arrayListOf<String>()
+
+    companion object {
+        fun toLyricList(openSpotifyLyrics: OpenSpotifyLyrics?): ArrayList<Lyric> {
+            return ArrayList(
+                openSpotifyLyrics?.lines?.map {
+                    Lyric(
+                        line = it.words,
+                        startTimeMs = it.startTimeMs.toInt()
+                    )
+                }?.filter { it.line.isNotBlank() } ?: emptyList()
+            )
+        }
+    }
+
+    private val lyricsList = arrayListOf<Lyric>()
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -28,18 +43,27 @@ class LyricsAdapter : RecyclerView.Adapter<LyricsAdapter.LyricsItemViewHolder>()
     }
 
     @SuppressLint("NotifyDataSetChanged")
-    fun setLyrics(lyricsList: ArrayList<String>) {
+    fun setLyrics(lyricsList: ArrayList<Lyric>) {
         this.lyricsList.clear()
         this.lyricsList.addAll(lyricsList)
         notifyDataSetChanged()
+    }
+
+    fun getNearestLineFromStartTime(startTimeMs: Int): Int {
+        return lyricsList.indexOfLast { it.startTimeMs < startTimeMs }
     }
 
     inner class LyricsItemViewHolder(
         private val binding: ItemLyricsBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(line: String) {
-            binding.textViewLine.text = line
+        fun bind(lyric: Lyric) {
+            binding.textViewLine.text = lyric.line
         }
     }
 }
+
+data class Lyric(
+    val line: String,
+    val startTimeMs: Int
+)

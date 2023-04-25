@@ -1,32 +1,28 @@
 package com.medina.juanantonio.lyrify.features.home
 
 import android.app.Activity
-import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.medina.juanantonio.lyrify.common.Constants.PreferencesKey.SPOTIFY_ACCESS_TOKEN
-import com.medina.juanantonio.lyrify.common.Constants.PreferencesKey.SPOTIFY_REFRESH_TOKEN
 import com.medina.juanantonio.lyrify.common.utils.Event
 import com.medina.juanantonio.lyrify.common.utils.toEvent
-import com.medina.juanantonio.lyrify.data.managers.IDataStoreManager
-import com.medina.juanantonio.lyrify.data.managers.ISpotifyManager
-import com.medina.juanantonio.lyrify.data.managers.LyricsManager
-import com.medina.juanantonio.lyrify.data.managers.SpotifyManager
+import com.medina.juanantonio.lyrify.common.views.PlayerTouchView
+import com.medina.juanantonio.lyrify.data.adapters.Lyric
+import com.medina.juanantonio.lyrify.data.adapters.LyricsAdapter
 import com.medina.juanantonio.lyrify.data.models.SpotifyCurrentTrack
+import com.medina.juanantonio.lyrify.data.usecase.SpotifyUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.*
 import javax.inject.Inject
-import kotlin.concurrent.schedule
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private var spotifyManager: ISpotifyManager,
-    private var dataStoreManager: IDataStoreManager
+    private val spotifyUseCase: SpotifyUseCase
 ) : ViewModel() {
     private var spotifyJob: Job? = null
     private var lyricsJob: Job? = null
@@ -34,15 +30,23 @@ class HomeViewModel @Inject constructor(
 
     val spotifyLoading = MutableLiveData(false)
     val spotifyPlaying = MutableLiveData(false)
+    val isLyricsInSync = MutableLiveData(false)
 
-    val spotifyCode = MutableLiveData<Event<String>>()
-    val spotifyAccessToken = MutableLiveData<Event<String>>()
-    val spotifyRefreshToken = MutableLiveData<Event<String>>()
-    val songLyrics = MutableLiveData(arrayListOf<String>())
+    private val _requestUserCurrentTrack = MutableLiveData<Event<Unit>>()
+    val requestUserCurrentTrack: LiveData<Event<Unit>>
+        get() = _requestUserCurrentTrack
+
+    val songLyrics = MutableLiveData(arrayListOf<Lyric>())
+    val hasLyrics = MediatorLiveData<Boolean>().apply {
+        addSource(songLyrics) {
+            this.value = it.isNotEmpty()
+        }
+    }
 
     var isSpotifyRequestPending = false
     val currentTrack = MutableLiveData<SpotifyCurrentTrack>()
-    private var currentSongTitle = ""
+
+    var currentSongTitle = ""
 
     fun getSongLyrics(currentTrack: SpotifyCurrentTrack) {
         if (lyricsJob?.isActive == true) return
@@ -53,15 +57,19 @@ class HomeViewModel @Inject constructor(
                 spotifyLoading.value = true
             }
 
-            val lyrics = LyricsManager.getSongLyrics(
-                artist = currentTrack.artist,
-                title = currentTrack.songName
-            )
+            val lyrics = spotifyUseCase.getSongLyrics(currentTrack.trackId)
 
             withContext(Dispatchers.Main) {
+                isLyricsInSync.value = lyrics?.isLyricsSynced == true
                 spotifyLoading.value = false
-                songLyrics.value = LyricsManager.formatLyrics(lyrics.lyrics ?: "")
+                songLyrics.value = LyricsAdapter.toLyricList(lyrics)
             }
+        }
+    }
+
+    private fun requestUserCurrentTrack() {
+        viewModelScope.launch(Dispatchers.Main) {
+            _requestUserCurrentTrack.value = Unit.toEvent()
         }
     }
 
@@ -72,66 +80,35 @@ class HomeViewModel @Inject constructor(
     ) {
         if (spotifyJob?.isActive == true) return
         spotifyJob = viewModelScope.launch(Dispatchers.IO) {
-            val token = dataStoreManager.getString(SPOTIFY_ACCESS_TOKEN)
-            if (token.isEmpty()) {
+            val hasExistingUser = spotifyUseCase.hasExistingUser()
+            if (!hasExistingUser) {
                 if (!authenticate) return@launch
-                spotifyManager.authenticate(activity)
+                spotifyUseCase.authenticate(activity)
                 isSpotifyRequestPending = true
             } else {
-                val (requestCode, currentTrack) =
-                    spotifyManager.getUserCurrentTrack(token)
-
-                if (requestCode == 401) {
-                    isSpotifyRequestPending = true
-                    refreshAccessToken(dataStoreManager.getString(SPOTIFY_REFRESH_TOKEN))
-                } else {
-                    Timer().schedule(500) {
-                        requestUserCurrentTrack(activity, authenticate, onCurrentTrack)
-                    }
-                }
+                val currentTrack = spotifyUseCase.getCurrentPlayingTrack()
+                requestUserCurrentTrack()
 
                 onCurrentTrack(currentTrack)
-                Log.d(SpotifyManager.TAG, "$requestCode, ${currentTrack?.songName}")
             }
         }
     }
 
-    suspend fun requestAccessToken(code: String) {
-        withContext(Dispatchers.Main) {
-            spotifyLoading.value = true
-        }
-        val result = spotifyManager.requestAccessToken(code)
-
-        withContext(Dispatchers.Main) {
-            spotifyAccessToken.value = result?.access_token?.toEvent()
-            result?.refresh_token?.let {
-                spotifyRefreshToken.value = it.toEvent()
-            }
-            spotifyLoading.value = false
+    fun saveAccessTokenFromAuthentication(accessToken: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            spotifyUseCase.saveAccessToken(accessToken)
+            if (isSpotifyRequestPending) requestUserCurrentTrack()
         }
     }
 
-    private suspend fun refreshAccessToken(refreshToken: String) {
-        withContext(Dispatchers.Main) {
-            spotifyLoading.value = true
-        }
-        val result = spotifyManager.refreshAccessToken(refreshToken)
-
-        withContext(Dispatchers.Main) {
-            spotifyAccessToken.value = result?.access_token?.toEvent()
-            spotifyLoading.value = false
-        }
-    }
-
-    fun skipToNext() {
-        if (spotifyControlJob?.isActive == true) return
-        spotifyControlJob = viewModelScope.launch(Dispatchers.IO) {
+    fun requestAccessToken(code: String) {
+        viewModelScope.launch(Dispatchers.IO) {
             withContext(Dispatchers.Main) {
                 spotifyLoading.value = true
             }
 
-            val token = dataStoreManager.getString(SPOTIFY_ACCESS_TOKEN)
-            spotifyManager.skipToNext(token)
+            spotifyUseCase.requestAccessToken(code)
+            requestUserCurrentTrack()
 
             withContext(Dispatchers.Main) {
                 spotifyLoading.value = false
@@ -139,47 +116,30 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun skipToPrevious() {
+    fun updateControl(action: PlayerTouchView.PlayerAction) {
         if (spotifyControlJob?.isActive == true) return
         spotifyControlJob = viewModelScope.launch(Dispatchers.IO) {
             withContext(Dispatchers.Main) {
                 spotifyLoading.value = true
             }
 
-            val token = dataStoreManager.getString(SPOTIFY_ACCESS_TOKEN)
-            spotifyManager.skipToPrevious(token)
-
-            withContext(Dispatchers.Main) {
-                spotifyLoading.value = false
+            when (action) {
+                PlayerTouchView.PlayerAction.SKIP_PREVIOUS -> {
+                    if ((currentTrack.value?.playProgress ?: 0) < 5000) {
+                        spotifyUseCase.skipToPrevious()
+                    } else {
+                        spotifyUseCase.seekToPosition(0)
+                    }
+                }
+                PlayerTouchView.PlayerAction.SKIP_NEXT -> spotifyUseCase.skipToNext()
+                PlayerTouchView.PlayerAction.PLAY_PAUSE -> {
+                    if (currentTrack.value?.isMusicPlaying == true) {
+                        spotifyUseCase.pause()
+                    } else {
+                        spotifyUseCase.play()
+                    }
+                }
             }
-        }
-    }
-
-    fun play() {
-        if (spotifyControlJob?.isActive == true) return
-        spotifyControlJob = viewModelScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                spotifyLoading.value = true
-            }
-
-            val token = dataStoreManager.getString(SPOTIFY_ACCESS_TOKEN)
-            spotifyManager.play(token)
-
-            withContext(Dispatchers.Main) {
-                spotifyLoading.value = false
-            }
-        }
-    }
-
-    fun pause() {
-        if (spotifyControlJob?.isActive == true) return
-        spotifyControlJob = viewModelScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                spotifyLoading.value = true
-            }
-
-            val token = dataStoreManager.getString(SPOTIFY_ACCESS_TOKEN)
-            spotifyManager.pause(token)
 
             withContext(Dispatchers.Main) {
                 spotifyLoading.value = false

@@ -26,9 +26,7 @@ class AppModule {
 
     @Provides
     @Singleton
-    fun provideSpotifyManager(
-        @ApplicationContext context: Context
-    ): ISpotifyManager {
-        return SpotifyManager(context)
+    fun provideSpotifyManager(): ISpotifyManager {
+        return SpotifyManager()
     }
 }
