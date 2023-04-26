@@ -60,7 +60,7 @@
             android:paddingVertical="@dimen/dp_4"
             android:text="@string/synced"
             android:textAlignment="center"
-            android:textColor="@color/white"
+            android:textColor="@color/black"
             android:visibility="@{safeUnbox(viewModel.spotifyPlaying &amp;&amp; viewModel.hasLyrics &amp;&amp; viewModel.isLyricsInSync) ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="@id/text_view_song_name"
             app:layout_constraintStart_toEndOf="@id/text_view_song_name"
@@ -78,7 +78,7 @@
             android:paddingVertical="@dimen/dp_4"
             android:text="@string/unsynced"
             android:textAlignment="center"
-            android:textColor="@color/white"
+            android:textColor="@color/black"
             android:visibility="@{safeUnbox(viewModel.spotifyPlaying &amp;&amp; viewModel.hasLyrics &amp;&amp; !viewModel.isLyricsInSync) ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="@id/text_view_song_name"
             app:layout_constraintStart_toEndOf="@id/text_view_song_name"
@@ -110,7 +110,10 @@
             android:id="@+id/text_view_artist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
             android:fontFamily="@font/open_sans"
+            android:maxWidth="@dimen/song_name_max_width"
+            android:maxLines="2"
             android:text="@{viewModel.currentTrack.artist}"
             android:textColor="@color/white"
             android:textSize="@dimen/sp_20"
@@ -118,7 +121,7 @@
             app:layout_constraintBottom_toBottomOf="@id/card_view_album"
             app:layout_constraintStart_toStartOf="@id/text_view_song_name"
             app:layout_constraintTop_toBottomOf="@id/text_view_song_name"
-            tools:text="@tools:sample/lorem[2]" />
+            tools:text="@tools:sample/lorem[20]" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view_lyrics"

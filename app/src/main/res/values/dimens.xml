@@ -28,5 +28,5 @@
 
     <dimen name="default_item_list_display_padding">@dimen/dp_2</dimen>
 
-    <dimen name="song_name_max_width">450dp</dimen>
+    <dimen name="song_name_max_width">400dp</dimen>
 </resources>
