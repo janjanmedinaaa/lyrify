@@ -126,6 +126,10 @@ class HomeFragment : Fragment() {
             adapter = lyricsAdapter
         }
 
+        binding.imageViewRefresh.setOnClickListener {
+            viewModel.refresh()
+        }
+
         listenToVM()
         listenToActivityVM()
     }

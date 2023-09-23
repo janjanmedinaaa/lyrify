@@ -14,10 +14,7 @@ import com.medina.juanantonio.lyrify.data.adapters.LyricsAdapter
 import com.medina.juanantonio.lyrify.data.models.SpotifyCurrentTrack
 import com.medina.juanantonio.lyrify.data.usecase.SpotifyUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import javax.inject.Inject
 
 @HiltViewModel
@@ -45,6 +42,10 @@ class HomeViewModel @Inject constructor(
 
     var isSpotifyRequestPending = false
     val currentTrack = MutableLiveData<SpotifyCurrentTrack>()
+
+    private var invalidTrackCounter = 0
+    val resetDisplay: Boolean
+        get() = invalidTrackCounter > 10
 
     var currentSongTitle = ""
 
@@ -89,9 +90,19 @@ class HomeViewModel @Inject constructor(
                 val currentTrack = spotifyUseCase.getCurrentPlayingTrack()
                 requestUserCurrentTrack()
 
-                onCurrentTrack(currentTrack)
+                if (currentTrack == null) invalidTrackCounter++
+                else invalidTrackCounter = 0
+
+                if (currentTrack != null || resetDisplay)
+                    onCurrentTrack(currentTrack)
             }
         }
+    }
+
+    fun refresh() {
+        spotifyJob?.cancel()
+        currentSongTitle = ""
+        requestUserCurrentTrack()
     }
 
     fun saveAccessTokenFromAuthentication(accessToken: String) {

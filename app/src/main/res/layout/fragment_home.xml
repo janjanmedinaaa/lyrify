@@ -146,8 +146,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_marginEnd="@dimen/dp_16"
-            android:visibility="@{safeUnbox(viewModel.spotifyLoading) ? View.VISIBLE : View.GONE}"
+            android:layout_margin="@dimen/default_margin"
+            android:visibility="@{safeUnbox(viewModel.spotifyLoading) ? View.VISIBLE : View.INVISIBLE}"
             app:SpinKit_Color="@android:color/white"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -158,5 +158,20 @@
             android:layout_height="match_parent"
             android:clickable="true"
             android:focusable="true" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/image_view_refresh"
+            android:layout_width="@dimen/dp_48"
+            android:layout_height="@dimen/dp_48"
+            android:layout_gravity="center"
+            android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@null"
+            android:src="@drawable/baseline_refresh_24"
+            android:visibility="@{safeUnbox(viewModel.spotifyLoading) ? View.GONE : View.VISIBLE}"
+            app:SpinKit_Color="@android:color/white"
+            app:layout_constraintBottom_toBottomOf="@id/spin_kit_spotify_loading"
+            app:layout_constraintEnd_toEndOf="@id/spin_kit_spotify_loading"
+            app:layout_constraintStart_toStartOf="@id/spin_kit_spotify_loading"
+            app:layout_constraintTop_toTopOf="@id/spin_kit_spotify_loading" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
