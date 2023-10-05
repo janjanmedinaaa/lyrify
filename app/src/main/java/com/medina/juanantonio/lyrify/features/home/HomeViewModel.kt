@@ -58,7 +58,7 @@ class HomeViewModel @Inject constructor(
                 spotifyLoading.value = true
             }
 
-            val lyrics = spotifyUseCase.getSongLyrics(currentTrack.trackId)
+            val lyrics = spotifyUseCase.getSongLyrics(currentTrack)
 
             withContext(Dispatchers.Main) {
                 isLyricsInSync.value = lyrics?.isLyricsSynced == true

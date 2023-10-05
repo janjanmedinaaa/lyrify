@@ -88,8 +88,8 @@ class SpotifyUseCase @Inject constructor(
         return currentTrack
     }
 
-    suspend fun getSongLyrics(trackId: String): OpenSpotifyLyrics? {
-        return spotifyManager.getTrackLyrics(trackId)
+    suspend fun getSongLyrics(track: SpotifyCurrentTrack): OpenSpotifyLyrics? {
+        return spotifyManager.getTrackLyrics(track)
     }
 
     suspend fun seekToPosition(positionMs: Int) {

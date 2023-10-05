@@ -35,8 +35,10 @@ class SpotifyManager : ISpotifyManager {
         private const val PLAY_URL =
             "https://api.spotify.com/v1/me/player/play"
 
-        private const val LYRICS_URL =
+        private const val SPOTIFY_LYRICS_URL =
             "https://spotify-lyric-api.herokuapp.com"
+        private const val MUSIX_MATCH_LYRICS_URL =
+            "https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get"
     }
 
     override suspend fun requestAccessToken(code: String): SpotifyAccessToken? {
@@ -168,9 +170,21 @@ class SpotifyManager : ISpotifyManager {
         return result.await()
     }
 
-    override suspend fun getTrackLyrics(trackId: String): OpenSpotifyLyrics? {
+    override suspend fun getTrackLyrics(track: SpotifyCurrentTrack): OpenSpotifyLyrics? {
+        val spotifyLyrics = getTrackLyricsViaSpotifyLyrics(track.trackId)
+        if (spotifyLyrics == null || !spotifyLyrics.isLyricsSynced) {
+            return getTrackLyricsViaMusixMatch(
+                title = track.songName,
+                artist = track.item?.artists?.first()?.name ?: ""
+            )?.toOpenSpotifyLyrics()
+        }
+
+        return spotifyLyrics
+    }
+
+    private suspend fun getTrackLyricsViaSpotifyLyrics(trackId: String): OpenSpotifyLyrics? {
         val result = CompletableDeferred<OpenSpotifyLyrics?>()
-        val request = LYRICS_URL.httpGet(
+        val request = SPOTIFY_LYRICS_URL.httpGet(
             parameters = listOf(
                 Pair("trackid", trackId)
             )
@@ -181,6 +195,41 @@ class SpotifyManager : ISpotifyManager {
                 is Result.Success -> {
                     val openLyrics = resultData.value.toOpenSpotifyLyrics()
                     result.complete(openLyrics)
+                }
+                else -> {
+                    result.complete(null)
+                }
+            }
+        }.join()
+        return result.await()
+    }
+
+    private suspend fun getTrackLyricsViaMusixMatch(
+        title: String,
+        artist: String
+    ): MusixMatchLyrics? {
+        val result = CompletableDeferred<MusixMatchLyrics?>()
+        val request = MUSIX_MATCH_LYRICS_URL.withParameters(
+            Pair("format", "json"),
+            Pair("user_language", "en"),
+            Pair("namespace", "lyrics_synced"),
+            Pair("f_subtitle_length_max_deviation", 1),
+            Pair("subtitle_format", "mxm"),
+            Pair("app_id", "web-desktop-app-v1.0"),
+            Pair("usertoken", "190511307254ae92ff84462c794732b84754b64a2f051121eff330"),
+            Pair("q_track", title),
+            Pair("q_artist", artist),
+        ).httpGet()
+
+        request.header(
+            Pair("Cookie", "AWSELB=55578B011601B1EF8BC274C33F9043CA947F99DCFF0A80541772015CA2B39C35C0F9E1C932D31725A7310BCAEB0C37431E024E2B45320B7F2C84490C2C97351FDE34690157")
+        )
+
+        request.responseString { _, _, resultData ->
+            when (resultData) {
+                is Result.Success -> {
+                    val musixMatchLyrics = resultData.value.toMusixMatchLyrics()
+                    result.complete(musixMatchLyrics)
                 }
                 else -> {
                     result.complete(null)
@@ -205,5 +254,5 @@ interface ISpotifyManager {
     suspend fun pause(token: String): Boolean
     suspend fun play(token: String): Boolean
 
-    suspend fun getTrackLyrics(trackId: String): OpenSpotifyLyrics?
+    suspend fun getTrackLyrics(track: SpotifyCurrentTrack): OpenSpotifyLyrics?
 }
