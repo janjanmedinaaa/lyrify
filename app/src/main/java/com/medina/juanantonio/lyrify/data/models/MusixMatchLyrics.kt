@@ -74,7 +74,13 @@ data class SubtitleItem(
         val _subtitleBody: String
     ) {
         val subtitleBody: List<SubtitleBodyItem>
-            get() = Gson().fromJson(_subtitleBody, Array<SubtitleBodyItem>::class.java).toList()
+            get() {
+                return try {
+                    Gson().fromJson(_subtitleBody, Array<SubtitleBodyItem>::class.java).toList()
+                } catch (exception: Exception) {
+                    emptyList()
+                }
+            }
     }
 }
 
